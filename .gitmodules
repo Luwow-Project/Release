@@ -1,0 +1,9 @@
+[submodule "extern/core"]
+	path = extern/core
+	url = https://github.com/Luwow-Project/Core
+[submodule "extern/luau"]
+	path = extern/luau
+	url = https://github.com/luau-lang/luau
+[submodule "libraries/gui"]
+	path = libraries/gui
+	url = https://github.com/Luwow-Project/GUI
