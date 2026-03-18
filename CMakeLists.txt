@@ -42,9 +42,11 @@ add_subdirectory(${RUN_SCRIPT_ROOT})
 add_subdirectory(${COMPILE_ROOT})
 add_subdirectory(${RUN_PACKAGE_ROOT})
 
-# Libraries - Gui
-add_subdirectory(${GUI_ROOT}/src/Gui)
-add_subdirectory(${GUI_ROOT}/src/GuiTest)
+if(WIN32)
+    # Libraries - Gui
+    add_subdirectory(${GUI_ROOT}/src/Gui)
+    add_subdirectory(${GUI_ROOT}/src/GuiTest)
+endif()
 
 # TODO: Remote debugger
 # set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)

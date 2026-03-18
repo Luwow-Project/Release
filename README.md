@@ -30,9 +30,19 @@ git submodules update --init --recursive
 
 ### 2. Configure and Build the Project
 
+Choices of config / build type are:
+Debug, Release, RelWithDebugInfo, MinSizeRel
+
+Windows:
 ```bash
 cmake . -B build
 cmake --build build --config Release
+```
+
+MacOS:
+```bash
+cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
 Your output binaries are located in the build/bin/Release folder.
