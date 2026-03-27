@@ -22,10 +22,10 @@ set(LUAU_ROOT ${CMAKE_SOURCE_DIR}/extern/luau)
 
 # Core engine + executables
 set(CORE_ROOT ${CMAKE_SOURCE_DIR}/extern/core)
+set(COMPILE_ROOT ${CORE_ROOT}/src/Compile)
 set(ENGINE_ROOT ${CORE_ROOT}/src/Engine)
-set(RUN_SCRIPT_ROOT ${CORE_ROOT}/src/LDebug)
-set(COMPILE_ROOT ${CORE_ROOT}/src/LCompile)
-set(RUN_PACKAGE_ROOT ${CORE_ROOT}/src/LRun)
+set(RUN_SCRIPT_ROOT ${CORE_ROOT}/src/RunScript)
+set(RUN_PACKAGE_ROOT ${CORE_ROOT}/src/RunPackage)
 
 # Libraries
 set(LIBRARY_ROOT ${CMAKE_SOURCE_DIR}/libraries)
