@@ -25,7 +25,7 @@ cd Luwow
 
 If you forget the --recurse-submodules flag, you can follow up with:
 ```bash
-git submodules update --init --recursive
+git submodule update --init --recursive
 ```
 
 ### 2. Configure and Build the Project
@@ -36,6 +36,12 @@ Debug, Release, RelWithDebugInfo, MinSizeRel
 Windows:
 ```bash
 cmake . -B build
+cmake --build build --config Release
+```
+
+If using MinGW:
+```bash
+cmake . -G "MinGW Makefiles"
 cmake --build build --config Release
 ```
 
