@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(Luwow VERSION 0.1.0 LANGUAGES CXX)
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -42,8 +45,7 @@ add_subdirectory(${RUN_SCRIPT_ROOT})
 add_subdirectory(${COMPILE_ROOT})
 add_subdirectory(${RUN_PACKAGE_ROOT})
 
-if(WIN32)
-    # Libraries - Gui
+if(WIN32 OR APPLE)
     add_subdirectory(${GUI_ROOT}/src/Gui)
     add_subdirectory(${GUI_ROOT}/src/GuiTest)
 endif()
