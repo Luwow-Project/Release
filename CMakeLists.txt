@@ -50,8 +50,11 @@ if(WIN32 OR APPLE)
     add_subdirectory(${GUI_ROOT}/src/GuiTest)
 endif()
 
-# TODO: Remote debugger
-# set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)
-# add_subdirectory(${CPP_DAP_ROOT})
-# add_subdirectory(${CMAKE_SOURCE_DIR}/extern/luau-debugger/debugger)
-# add_subdirectory(${CMAKE_SOURCE_DIR}/extern/remotedebugger/src/LRemoteDebug)
+# Remote debugger
+set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)
+set(LUAU_DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/luau-debugger)
+set(DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/debug/src)
+
+add_subdirectory(${CPP_DAP_ROOT})
+add_subdirectory(${LUAU_DEBUGGER_ROOT}/debugger)
+add_subdirectory(${DEBUGGER_ROOT})
