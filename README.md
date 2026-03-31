@@ -42,7 +42,7 @@ cmake --build build --config Release
 If using MinGW:
 ```bash
 cmake . -G "MinGW Makefiles"
-cmake --build build --config Release
+cmake --build . --config Release
 ```
 
 MacOS:
