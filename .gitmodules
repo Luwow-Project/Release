@@ -7,3 +7,12 @@
 [submodule "libraries/gui"]
 	path = libraries/gui
 	url = https://github.com/Luwow-Project/GUI
+[submodule "extern/debug"]
+	path = extern/debug
+	url = https://github.com/Luwow-Project/RemoteDebug/
+[submodule "extern/cppdap"]
+	path = extern/cppdap
+	url = https://github.com/sssooonnnggg/cppdap
+[submodule "extern/luau-debugger"]
+	path = extern/luau-debugger
+	url = https://github.com/sssooonnnggg/luau-debugger
