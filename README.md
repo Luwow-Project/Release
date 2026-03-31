@@ -10,9 +10,10 @@ This repository builds all the major components of Luwow Project
 
 ### Supported Platforms
 
-- Windows (Microsoft Visual Code + Visual C++ compiler)
+- Windows (Microsoft Visual Studio Code + Visual C++ compiler)
+- Windows (Microsoft Visual Studio Code + MinGW C++ compiler)
 - MacOS (Microsoft Visual Studio Code + XCode compiler)
-- iPadOS (planned)
+- Future OS plans include iPad, Linux, and Android
 
 ## Setup Instructions
 
@@ -51,17 +52,18 @@ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Your output binaries are located in the build/bin/Release folder.
+Your output binaries are located in the build/bin/Release folder on Windows or build/bin folder on Mac.
 
 ## Usage
 
-### runscript - Script compiler / runner
+### runscript - Script compiler / runner and remotedebug - compiler / runner / remote debug host
 
 Execute script from the command line:
 
 ```bash
 ./runscript script.luau
 ./runscriptwithgui script.luau
+./remotedebug 59000 script.luau
 ```
 
 ### compile - Script compiler
