@@ -81,5 +81,5 @@ remainder are expected to be supporting scripts using require.
 Execute Luau scripts from the command line:
 
 ```bash
-./lrun test.pkg
+./runpackage test.pkg
 ```
