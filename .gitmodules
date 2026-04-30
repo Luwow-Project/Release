@@ -3,13 +3,14 @@
 	url = https://github.com/Luwow-Project/Core
 [submodule "extern/luau"]
 	path = extern/luau
-	url = https://github.com/MikeFried/luau/tree/MikeFried/fix-fflag-dependency
+	url = https://github.com/MikeFried/luau
+	branch = MikeFried/fix-fflag-dependency
 [submodule "libraries/gui"]
 	path = libraries/gui
 	url = https://github.com/Luwow-Project/GUI
 [submodule "extern/debug"]
 	path = extern/debug
-	url = https://github.com/Luwow-Project/RemoteDebug/
+	url = https://github.com/Luwow-Project/RemoteDebug
 [submodule "extern/cppdap"]
 	path = extern/cppdap
 	url = https://github.com/sssooonnnggg/cppdap
