@@ -3,7 +3,7 @@
 	url = https://github.com/Luwow-Project/Core
 [submodule "extern/luau"]
 	path = extern/luau
-	url = https://github.com/luau-lang/luau
+	url = https://github.com/MikeFried/luau/tree/MikeFried/fix-fflag-dependency
 [submodule "libraries/gui"]
 	path = libraries/gui
 	url = https://github.com/Luwow-Project/GUI
