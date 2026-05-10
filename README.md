@@ -4,18 +4,25 @@ This repository builds all the major components of Luwow Project
 
 ## Requirements
 
-- C++17 compatible compiler
-- CMake 3.16 or later
-- Luau source code (see setup instructions below)
+* C++ 17 compatible compiler
+* CMake 3.16 or later
+* Luau source code
 
-### Supported Platforms
+-----
 
-- Windows (Microsoft Visual Studio Code + Visual C++ compiler)
-- Windows (Microsoft Visual Studio Code + MinGW C++ compiler)
-- MacOS (Microsoft Visual Studio Code + XCode compiler)
-- Future OS plans include iPad, Linux, and Android
+## Supported Platforms
 
-## Setup Instructions
+* Windows (Microsoft Visual Studio Code + Visual C++ compiler)
+* Windows (Microsoft Visual Studio Code + MinGW C++ compiler)
+* MacOS (Microsoft Visual Studio Code + XCode compiler)
+
+*(Future OS plans include iPad, Linux, and Android)*
+
+-----
+
+## Setting Up
+
+In a folder, run the commands below in your terminal:
 
 ### 1. Clone the Repository
 
@@ -31,19 +38,16 @@ git submodule update --init --recursive
 
 ### 2. Configure and Build the Project
 
-Choices of config / build type are:
-Debug, Release, RelWithDebugInfo, MinSizeRel
-
 Windows:
 ```bash
 cmake . -B build
 cmake --build build --config Release
 ```
 
-If using MinGW:
+If using MinGW on Windows:
 ```bash
-cmake . -G "MinGW Makefiles"
-cmake --build . --config Release
+cmake . -B build -G "MinGW Makefiles"
+cmake --build build --config Release
 ```
 
 MacOS:
@@ -52,34 +56,11 @@ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Your output binaries are located in the build/bin/Release folder on Windows or build/bin folder on Mac.
+If you wish to change the config, config/build types are:
+`Debug`, `Release`, `RelWithDebugInfo`, `MinSizeRel`
+
+-----
 
 ## Usage
 
-### runscript - Script compiler / runner and remotedebug - compiler / runner / remote debug host
-
-Execute script from the command line:
-
-```bash
-./runscript script.luau
-./runscriptwithgui script.luau
-./remotedebug 59000 script.luau
-```
-
-### compile - Script compiler
-
-Compiles one or more scripts into bytecode and places them in a package in the order
-listed. The first script in the package is then executed by the package runner. The
-remainder are expected to be supporting scripts using require.
-
-```bash
-./compile script.luau test.pkg
-```
-
-### runpackage - Script Package Executor
-
-Execute Luau scripts from the command line:
-
-```bash
-./runpackage test.pkg
-```
+To learn how to use the libraries, you can head over to the [documentation](https://luwow-project.github.io/Documentation/tutorials/setup/#usage).
