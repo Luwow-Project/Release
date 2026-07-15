@@ -33,6 +33,7 @@ set(RUN_PACKAGE_ROOT ${CORE_ROOT}/src/RunPackage)
 # Libraries
 set(LIBRARY_ROOT ${CMAKE_SOURCE_DIR}/libraries)
 set(GUI_ROOT ${LIBRARY_ROOT}/gui)
+set(TASK_ROOT ${LIBRARY_ROOT}/task)
 
 # Luau build
 option(LUAU_BUILD_CLI "Build CLI" OFF)
@@ -50,11 +51,18 @@ if(WIN32 OR APPLE)
     add_subdirectory(${GUI_ROOT}/src/GuiTest)
 endif()
 
+add_subdirectory(${TASK_ROOT}/src/TaskLibrary)
+add_subdirectory(${TASK_ROOT}/src/TaskRunner)
+
 # Remote debugger
 set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)
 set(LUAU_DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/luau-debugger)
 set(DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/debug/src)
 
+# Libuv
+set(LIBUV_ROOT ${CMAKE_SOURCE_DIR}/extern/libuv)
+
 add_subdirectory(${CPP_DAP_ROOT})
 add_subdirectory(${LUAU_DEBUGGER_ROOT}/debugger)
 add_subdirectory(${DEBUGGER_ROOT})
+add_subdirectory(${LIBUV_ROOT})
