@@ -54,8 +54,7 @@ add_subdirectory(${COMPILE_ROOT})
 add_subdirectory(${RUN_PACKAGE_ROOT})
 
 if(WIN32 OR APPLE)
-    add_subdirectory(${GUI_ROOT}/src/Gui)
-    add_subdirectory(${GUI_ROOT}/src/GuiTest)
+    add_subdirectory(${GUI_ROOT}/src)
 endif()
 
 add_subdirectory(${TASK_ROOT}/src)
