@@ -10,6 +10,9 @@
 [submodule "libraries/task"]
 	path = libraries/task
 	url = https://github.com/Luwow-Project/Task
+[submodule "libraries/fs"]
+	path = libraries/fs
+	url = https://github.com/Luwow-Project/Filesystem
 [submodule "extern/debug"]
 	path = extern/debug
 	url = https://github.com/Luwow-Project/RemoteDebug
