@@ -6,6 +6,7 @@
 	url = https://github.com/luau-lang/luau
 [submodule "libraries/gui"]
 	path = libraries/gui
+	branch = new-architecture
 	url = https://github.com/Luwow-Project/GUI
 [submodule "libraries/task"]
 	path = libraries/task
