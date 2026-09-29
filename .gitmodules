@@ -1,18 +1,21 @@
 [submodule "extern/core"]
 	path = extern/core
+	branch = dll-implementation
 	url = https://github.com/Luwow-Project/Core
 [submodule "extern/luau"]
 	path = extern/luau
 	url = https://github.com/luau-lang/luau
 [submodule "libraries/gui"]
 	path = libraries/gui
-	branch = new-architecture
+	branch = dll-implementation-new-architecture
 	url = https://github.com/Luwow-Project/GUI
 [submodule "libraries/task"]
 	path = libraries/task
+	branch = dll-implementation
 	url = https://github.com/Luwow-Project/Task
 [submodule "libraries/fs"]
 	path = libraries/fs
+	branch = dll-implementation
 	url = https://github.com/Luwow-Project/Filesystem
 [submodule "extern/debug"]
 	path = extern/debug
