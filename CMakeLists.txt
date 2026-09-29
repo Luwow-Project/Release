@@ -20,6 +20,17 @@ if(WIN32)
     )
 endif()
 
+# Build options
+#   Executables with bound libraries:  LUWOW_BUILD_EXECUTABLES=ON  LUWOW_BUILD_LIBRARIES=ON   LUWOW_LIBRARY_MODE=STATIC
+#   Executables loading DLLs:          LUWOW_BUILD_EXECUTABLES=ON  LUWOW_BUILD_LIBRARIES=OFF  LUWOW_LIBRARY_MODE=SHARED
+#   Library DLLs only:                 LUWOW_BUILD_EXECUTABLES=OFF LUWOW_BUILD_LIBRARIES=ON   LUWOW_LIBRARY_MODE=SHARED
+option(LUWOW_BUILD_EXECUTABLES "Build runscript and the other Luwow executables" ON)
+option(LUWOW_BUILD_LIBRARIES "Build the Luwow libraries" ON)
+set(LUWOW_LIBRARY_MODE "SHARED" CACHE STRING "STATIC binds the libraries into runscript, SHARED builds them as DLLs runscript loads through .config.luau")
+set_property(CACHE LUWOW_LIBRARY_MODE PROPERTY STRINGS STATIC SHARED)
+
+include(${CMAKE_SOURCE_DIR}/cmake/LuwowModules.cmake)
+
 # Luau
 set(LUAU_ROOT ${CMAKE_SOURCE_DIR}/extern/luau)
 
@@ -36,42 +47,56 @@ set(GUI_ROOT ${LIBRARY_ROOT}/gui)
 set(TASK_ROOT ${LIBRARY_ROOT}/task)
 set(FS_ROOT ${LIBRARY_ROOT}/fs)
 
-# Runner
-set(RUNNER_ROOT ${CMAKE_SOURCE_DIR}/runner)
-
 # Libuv
 set(LIBUV_ROOT ${CMAKE_SOURCE_DIR}/extern/libuv)
-
-# Luau build
-option(LUAU_BUILD_CLI "Build CLI" OFF)
-option(LUAU_BUILD_TESTS "Build tests" OFF)
-add_subdirectory(${LUAU_ROOT})
-
-# Core components
-add_subdirectory(${ENGINE_ROOT})
-add_subdirectory(${RUN_SCRIPT_ROOT})
-add_subdirectory(${COMPILE_ROOT})
-add_subdirectory(${RUN_PACKAGE_ROOT})
-
-if(WIN32 OR APPLE)
-    add_subdirectory(${GUI_ROOT}/src)
-endif()
-
-add_subdirectory(${TASK_ROOT}/src)
-add_subdirectory(${FS_ROOT}/src)
-
-add_subdirectory(${RUNNER_ROOT})
 
 # Remote debugger
 set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)
 set(LUAU_DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/luau-debugger)
 set(DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/debug/src)
 
-add_subdirectory(${CPP_DAP_ROOT})
-add_subdirectory(${LUAU_DEBUGGER_ROOT}/debugger)
-add_subdirectory(${DEBUGGER_ROOT})
+# Luau build
+option(LUAU_BUILD_CLI "Build CLI" OFF)
+option(LUAU_BUILD_TESTS "Build tests" OFF)
+add_subdirectory(${LUAU_ROOT})
 
-# Only the static uv_a is linked, skip building uv.dll
-set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+luwow_export_luau_api()
 
-add_subdirectory(${LIBUV_ROOT})
+# Core engine
+add_subdirectory(${ENGINE_ROOT})
+
+# Libraries
+if(LUWOW_BUILD_LIBRARIES)
+    if(WIN32 OR APPLE)
+        add_subdirectory(${GUI_ROOT}/src)
+    endif()
+
+    add_subdirectory(${TASK_ROOT}/src)
+    add_subdirectory(${FS_ROOT}/src)
+
+    # Only the static uv_a is linked, skip building uv.dll
+    set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    add_subdirectory(${LIBUV_ROOT})
+endif()
+
+luwow_generate_static_modules()
+
+# Executables
+if(LUWOW_BUILD_EXECUTABLES)
+    add_subdirectory(${RUN_SCRIPT_ROOT})
+    add_subdirectory(${COMPILE_ROOT})
+    add_subdirectory(${RUN_PACKAGE_ROOT})
+
+    add_subdirectory(${CPP_DAP_ROOT})
+    add_subdirectory(${LUAU_DEBUGGER_ROOT}/debugger)
+    add_subdirectory(${DEBUGGER_ROOT})
+
+    # In SHARED mode runscript.lib is the import library third-party module DLLs link against on Windows
+    install(TARGETS Luwow.RunScript Luwow.Compile Luwow.RunPackage Luwow.RemoteDebug
+        RUNTIME DESTINATION bin COMPONENT executables
+        ARCHIVE DESTINATION lib COMPONENT sdk
+    )
+elseif(LUWOW_LIBRARY_MODE STREQUAL "SHARED")
+    # Library DLLs link against the Luau API runscript exports, so it's built but not installed
+    add_subdirectory(${RUN_SCRIPT_ROOT} ${CMAKE_BINARY_DIR}/runscript EXCLUDE_FROM_ALL)
+endif()
