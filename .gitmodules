@@ -19,6 +19,9 @@
 [submodule "libraries/signal"]
 	path = libraries/signal
 	url = https://github.com/Luwow-Project/Signal
+[submodule "libraries/net"]
+	path = libraries/net
+	url = https://github.com/Luwow-Project/Net
 [submodule "extern/debug"]
 	path = extern/debug
 	url = https://github.com/Luwow-Project/RemoteDebug
@@ -31,6 +34,3 @@
 [submodule "extern/libuv"]
 	path = extern/libuv
 	url = https://github.com/libuv/libuv
-[submodule "libraries/net"]
-	path = libraries/net
-	url = https://github.com/Luwow-Project/Net

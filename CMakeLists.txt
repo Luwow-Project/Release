@@ -46,6 +46,9 @@ set(LIBRARY_ROOT ${CMAKE_SOURCE_DIR}/libraries)
 set(GUI_ROOT ${LIBRARY_ROOT}/gui)
 set(TASK_ROOT ${LIBRARY_ROOT}/task)
 set(FS_ROOT ${LIBRARY_ROOT}/fs)
+set(IO_ROOT ${LIBRARY_ROOT}/io)
+set(NET_ROOT ${LIBRARY_ROOT}/net)
+set(SIGNAL_ROOT ${LIBRARY_ROOT}/signal)
 
 # Libuv
 set(LIBUV_ROOT ${CMAKE_SOURCE_DIR}/extern/libuv)
@@ -73,6 +76,9 @@ if(LUWOW_BUILD_LIBRARIES)
 
     add_subdirectory(${TASK_ROOT}/src)
     add_subdirectory(${FS_ROOT}/src)
+    add_subdirectory(${IO_ROOT}/src)
+    add_subdirectory(${SIGNAL_ROOT}/src)
+    add_subdirectory(${NET_ROOT}/src)
 
     # Only the static uv_a is linked, skip building uv.dll
     set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
