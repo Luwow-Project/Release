@@ -1,0 +1,63 @@
+name: Tests
+
+on:
+  push:
+      branches:
+        - 'main'
+      paths-ignore:
+        - '**.md'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  require:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+
+    steps:
+      - name: Check out with submodules
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D LUWOW_LIBRARY_MODE=SHARED
+
+      # Building the executables, also the Filesystem library for testing.
+      - name: Build
+        id: build
+        shell: bash
+        run: >
+          cmake --build build --config Release --parallel
+          --target Luwow.RunScript Luwow.Compile Luwow.RunPackage Luwow.FsLibrary
+
+      # The runscript tests
+      - name: Script tests (runscript)
+        id: script
+        shell: bash
+        run: python tests/run_tests.py --suite script
+
+      # The package tests
+      - name: Package tests (compile + runpackage)
+        id: package
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: python tests/run_tests.py --suite package
+
+      # Total: Passed and failed
+      - name: Totals
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          echo "Script runs:  ${{ steps.script.outputs.runs_passed }} passed, ${{ steps.script.outputs.runs_failed }} failed"
+          echo "Package runs: ${{ steps.package.outputs.runs_passed }} passed, ${{ steps.package.outputs.runs_failed }} failed"

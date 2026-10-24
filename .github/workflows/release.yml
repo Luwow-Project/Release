@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, such as v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ inputs.version }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Validate the version
+        run: |
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "The version must look like v0.2.0, got $VERSION"
+            exit 1
+          fi
+
+      - name: Create the draft release
+        run: >
+          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"
+          --title "$VERSION" --generate-notes --draft
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix: # not using ubuntu-latest to improve compatibility
+        os: [{name: linux-x64, version: ubuntu-22.04}, {name: macos-arm64, version: macos-latest}, {name: windows-x64, version: windows-latest}]
+    name: ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os.version }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Configure
+        run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # Nothing is uploaded that fails the tests
+      - name: Test
+        run: python tests/run_tests.py
+
+      - name: Install
+        run: |
+          cmake --install build --config Release --prefix dist --component executables
+          cmake --install build --config Release --prefix dist --component libraries
+
+      - name: Pack
+        working-directory: dist/bin
+        run: |
+          name="luwow-${VERSION}-${{ matrix.os.name }}"
+          libraries="luwow-libraries-${VERSION}-${{ matrix.os.name }}"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a -tzip "../${name}.zip" . > /dev/null
+            (cd libraries && 7z a -tzip "../../${libraries}.zip" . > /dev/null)
+          else
+            tar -czf "../${name}.tar.gz" .
+            tar -czf "../${libraries}.tar.gz" -C libraries .
+          fi
+
+      - name: Upload
+        run: gh release upload "$VERSION" dist/luwow-* --repo "$GITHUB_REPOSITORY" --clobber
