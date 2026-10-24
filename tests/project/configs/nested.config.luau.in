@@ -1,0 +1,15 @@
+-- The same aliases from a config in a subfolder: its paths are relative to this folder, not to the working
+-- directory or the project's root
+print("CONFIG_RAN")
+
+return {
+	luau = {
+		aliases = {
+			Lib = "../src/lib",
+			Folder = "../src/folder",
+			Shared = "../shared",
+			Luwow = "../types",
+		},
+		dlls = @DLLS@,
+	},
+}

@@ -1,0 +1,18 @@
+-- The suite's config. run_tests.py writes it out as .config.luau, with dlls set to the build's libraries.
+-- It's Luau that's run, not data that's read, so the aliases can be worked out here.
+print("CONFIG_RAN")
+
+local src = "./src"
+
+return {
+	luau = {
+		aliases = {
+			Lib = src .. "/lib",
+			Folder = src .. "/folder",
+			Shared = "./shared",
+			-- Clashes with the native @Luwow modules, which win where one exists
+			Luwow = "./types",
+		},
+		dlls = @DLLS@,
+	},
+}
