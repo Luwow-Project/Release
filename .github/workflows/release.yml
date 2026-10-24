@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version, such as v0.2.0"
+        description: "Release version, such as v0.1.0"
         required: true
 
 permissions:
@@ -25,10 +25,14 @@ jobs:
             exit 1
           fi
 
-      - name: Create the draft release
-        run: >
-          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"
-          --title "$VERSION" --generate-notes --draft
+      - name: Find or create the release
+        run: |
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "$VERSION is already released, its archives are replaced"
+          else
+            gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$VERSION" --generate-notes --draft
+          fi
 
   build:
     needs: create-release
