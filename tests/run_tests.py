@@ -5,13 +5,11 @@ runpackage (--suite package).
 
 Runs every case in project/cases with runscript, and compiled into a package with compile and runpackage,
 from several working directories: the project's own, an unrelated one, a decoy that mirrors the project with
-other modules, one spelled in another case and one reached through a symlink. Packages run with the
-project's sources moved away, so nothing is read from disk, and are also compiled from paths given with ./,
-as absolute paths and from a subfolder, which must make no difference.
+other modules, one spelled in another case and one reached through a symlink.
 
-Each case prints PASS/FAIL per check and DONE <failures> at its end (project/cases/harness.luau). A run
+Each case prints PASS/FAIL per check and DONE <failures> at its end. A run
 passes when it exits with 0, prints DONE 0 and no FAIL, runs its config exactly once (or never, without
-one) and never touches the decoy. The exit code is 1 when any run fails.
+one) and never touches the decoy.
 
     python tests/run_tests.py [--bin <folder with runscript>] [--libraries <module DLL folder>]
 """
@@ -89,7 +87,6 @@ class Package:
         self.case = case
         self.output = output
         self.configured = configured
-        # The label's prefix: "" for the plain package, otherwise its config or how it was compiled
         self.kind = kind
 
 
@@ -108,8 +105,7 @@ def find_bin(given):
 
 
 def write_configs(project, libraries):
-    # Absolute, so the DLLs are found from any working directory and next to any package. A STATIC build
-    # ignores dlls, so it's given a folder that doesn't exist, which it mustn't look for.
+    # Absolute, so the DLLs are found from any working directory and next to any package.
     dlls = json.dumps(libraries.resolve().as_posix() if libraries else STATIC_DLLS)
     for template in project.rglob("*.config.luau.in"):
         text = template.read_text(encoding="utf-8").replace("@DLLS@", dlls)
@@ -118,7 +114,7 @@ def write_configs(project, libraries):
 
 
 def make_decoy(decoy):
-    # The project's layout with other modules and configs: anything resolved from the working directory
+    # The project's layout with other modules and configs, anything resolved from the working directory
     # rather than the package or the config would load these
     for file in decoy.rglob("*"):
         if file.is_file() and file.name.endswith((".luau", ".lua", ".luau.in")):
@@ -128,7 +124,7 @@ def make_decoy(decoy):
 
 
 def case_insensitive_spelling(path):
-    # The same folder spelled in another case, when the file system ignores case (Windows, macOS by default)
+    # The same folder spelled in another case, when the file system ignores case
     swapped = str(path).swapcase()
     if swapped != str(path) and os.path.isdir(swapped):
         return Path(swapped)
@@ -422,7 +418,7 @@ def main():
         make_decoy(decoy)
         write_configs(decoy, libraries)
 
-        # The project's folder reached in other ways: what macOS gives for /tmp or a folder typed in lowercase
+        # The project's folder reached in other ways
         def alternates_for(folder, name):
             found = []
             spelled = case_insensitive_spelling(folder)

@@ -70,13 +70,10 @@ jobs:
         working-directory: dist/bin
         run: |
           name="luwow-${VERSION}-${{ matrix.os.name }}"
-          libraries="luwow-libraries-${VERSION}-${{ matrix.os.name }}"
           if [ "$RUNNER_OS" = "Windows" ]; then
             7z a -tzip "../${name}.zip" . > /dev/null
-            (cd libraries && 7z a -tzip "../../${libraries}.zip" . > /dev/null)
           else
             tar -czf "../${name}.tar.gz" .
-            tar -czf "../${libraries}.tar.gz" -C libraries .
           fi
 
       - name: Upload

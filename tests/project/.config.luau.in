@@ -1,5 +1,4 @@
 -- The suite's config. run_tests.py writes it out as .config.luau, with dlls set to the build's libraries.
--- It's Luau that's run, not data that's read, so the aliases can be worked out here.
 print("CONFIG_RAN")
 
 local src = "./src"

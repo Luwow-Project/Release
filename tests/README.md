@@ -16,7 +16,7 @@ The runner finds `runscript`, `compile` and `runpackage` under `build/bin` (or p
 Each case in `project/cases` is run:
 
 - with `runscript`, from the project's folder, from an unrelated folder, from a decoy folder, from the project's folder spelled in another case (where the file system ignores case) and through a symlink to it (where symlinks can be made);
-- compiled into a package, with `runpackage`, from the package's folder, from an unrelated folder, from the decoy, and the same other spellings. Packages run with the project's sources moved away, so nothing is read from disk.
+- compiled into a package, with `runpackage`, from the package's folder, from an unrelated folder, from the decoy, and the same other spellings.
 
 The decoy mirrors the project's layout, configs included, with other modules: a run that resolves anything from its working directory loads one of them, and fails. The alias cases run again with `configs/nested.config.luau`, a config in a subfolder, and `noconfig` runs without a config. Some cases are also compiled from paths given with `./`, as absolute paths and from the `cases` subfolder, which must make no difference to the package.
 
@@ -33,10 +33,6 @@ The decoy mirrors the project's layout, configs included, with other modules: a 
 | `noconfig` | relative, `@self` and folder modules without a config, and config aliases are undefined |
 
 Every run also checks the config ran exactly once (each config prints `CONFIG_RAN`), or never without one, and that nothing of the decoy was loaded.
-
-## GitHub Actions
-
-`.github/workflows/tests.yml` builds the executables and `fs` on Linux, macOS and Windows, then runs each suite as its own step. Each step writes the runs and checks that passed and failed to the job's summary, with each case's runs and a table of the failed ones, adds an error annotation for every failed run, and sets `runs_passed`, `runs_failed`, `checks_passed` and `checks_failed` as its outputs.
 
 ## Adding a check
 
