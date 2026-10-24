@@ -53,11 +53,6 @@ set(SIGNAL_ROOT ${LIBRARY_ROOT}/signal)
 # Libuv
 set(LIBUV_ROOT ${CMAKE_SOURCE_DIR}/extern/libuv)
 
-# Remote debugger
-set(CPP_DAP_ROOT ${CMAKE_SOURCE_DIR}/extern/cppdap)
-set(LUAU_DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/luau-debugger)
-set(DEBUGGER_ROOT ${CMAKE_SOURCE_DIR}/extern/debug/src)
-
 # Luau build
 option(LUAU_BUILD_CLI "Build CLI" OFF)
 option(LUAU_BUILD_TESTS "Build tests" OFF)
@@ -93,12 +88,8 @@ if(LUWOW_BUILD_EXECUTABLES)
     add_subdirectory(${COMPILE_ROOT})
     add_subdirectory(${RUN_PACKAGE_ROOT})
 
-    add_subdirectory(${CPP_DAP_ROOT})
-    add_subdirectory(${LUAU_DEBUGGER_ROOT}/debugger)
-    add_subdirectory(${DEBUGGER_ROOT})
-
     # In SHARED mode runscript.lib is the import library third-party module DLLs link against on Windows
-    install(TARGETS Luwow.RunScript Luwow.Compile Luwow.RunPackage Luwow.RemoteDebug
+    install(TARGETS Luwow.RunScript Luwow.Compile Luwow.RunPackage
         RUNTIME DESTINATION bin COMPONENT executables
         ARCHIVE DESTINATION lib COMPONENT sdk
     )

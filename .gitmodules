@@ -22,15 +22,6 @@
 [submodule "libraries/net"]
 	path = libraries/net
 	url = https://github.com/Luwow-Project/Net
-[submodule "extern/debug"]
-	path = extern/debug
-	url = https://github.com/Luwow-Project/RemoteDebug
-[submodule "extern/cppdap"]
-	path = extern/cppdap
-	url = https://github.com/sssooonnnggg/cppdap
-[submodule "extern/luau-debugger"]
-	path = extern/luau-debugger
-	url = https://github.com/sssooonnnggg/luau-debugger
 [submodule "extern/libuv"]
 	path = extern/libuv
 	url = https://github.com/libuv/libuv
