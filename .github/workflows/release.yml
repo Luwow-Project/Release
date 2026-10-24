@@ -55,7 +55,7 @@ jobs:
         run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel 4
 
       # Nothing is uploaded that fails the tests
       - name: Test
