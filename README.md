@@ -4,7 +4,7 @@ This repository builds all the major components of Luwow Project
 
 ## Requirements
 
-* C++ 17 compatible compiler
+* C++ 20 compatible compiler
 * CMake 3.16 or later
 * Luau source code
 

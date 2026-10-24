@@ -33,6 +33,7 @@ else()
 endif()
 
 set(LUWOW_MODULES_TEMPLATE "${CMAKE_CURRENT_LIST_DIR}/StaticModules.cpp.in")
+set(LUWOW_MODULE_HOST_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ModuleHost.cpp")
 
 # Exports the Luau VM from Luau.VM's objects, call once after adding Luau in SHARED mode
 function(luwow_export_luau_api)
@@ -113,6 +114,16 @@ function(luwow_add_library target)
         # Only Luau's headers, the VM itself comes from the host executable at load time
         target_include_directories(${target} PRIVATE $<TARGET_PROPERTY:Luau.VM,INTERFACE_INCLUDE_DIRECTORIES>)
         target_link_libraries(${target} PRIVATE ${LUWOW_EXECUTABLE_TARGET})
+
+        # On Windows the imports name the executable built with, so they're delay-loaded and resolved from the
+        # executable the module is loaded into. Elsewhere they bind to the main executable.
+        if(MSVC)
+            set(hostImport "$<TARGET_FILE_NAME:${LUWOW_EXECUTABLE_TARGET}>")
+            target_sources(${target} PRIVATE ${LUWOW_MODULE_HOST_SOURCE})
+            target_compile_definitions(${target} PRIVATE "LUWOW_HOST_IMPORT=\"${hostImport}\"")
+            target_link_options(${target} PRIVATE "/DELAYLOAD:${hostImport}")
+            target_link_libraries(${target} PRIVATE delayimp)
+        endif()
 
         install(TARGETS ${target} LIBRARY DESTINATION bin/libraries COMPONENT libraries)
     else()
