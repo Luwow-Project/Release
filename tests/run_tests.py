@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Luwow's test suites: require resolution through runscript (--suite script), and packages through compile and
-runpackage (--suite package).
+Luwow's test suites: require resolution through runscript (--suite script), packages through compile and
+runpackage (--suite package), and net.request against a local HTTP server (--suite net).
 
 Runs every case in project/cases with runscript, and compiled into a package with compile and runpackage,
 from several working directories: the project's own, an unrelated one, a decoy that mirrors the project with
@@ -15,6 +15,9 @@ one) and never touches the decoy.
 """
 
 import argparse
+import gzip
+import hashlib
+import http.server
 import json
 import os
 import re
@@ -22,6 +25,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -37,6 +42,8 @@ NESTED_CONFIG_CASES = ["self", "aliases", "native", "caching"]
 NO_CONFIG_CASES = ["noconfig"]
 # Cases run as packages only, with the project's config
 PACKAGE_CASES = ["package_names"]
+# Cases run against the local HTTP server, with runscript
+NET_CASES = ["net"]
 # Cases compiled again from paths given in other ways
 COMPILE_STYLE_CASES = ["aliases", "init_semantics", "package_names"]
 
@@ -131,6 +138,18 @@ def case_insensitive_spelling(path):
     return None
 
 
+def short_spelling(path):
+    if os.name != "nt":
+        return None
+    import ctypes
+
+    buffer = ctypes.create_unicode_buffer(32768)
+    if not ctypes.windll.kernel32.GetShortPathNameW(str(path), buffer, len(buffer)):
+        return None
+    short = buffer.value
+    return Path(short) if short.lower() != str(path).lower() else None
+
+
 def try_symlink(link, target):
     try:
         os.symlink(target, link, target_is_directory=True)
@@ -182,15 +201,92 @@ def execute(run):
         run.problems.append(f"config ran {config_runs} times, expected {expected_config_runs}")
 
 
-def script_runs(bins, project, elsewhere, decoy, alternates):
+# The net case's server: what each path answers, a deterministic megabyte for saveTo, and a path slow
+# enough to time out
+BIG_BODY = bytes(i % 251 for i in range(1024 * 1024))
+
+
+class TestHandler(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *args):
+        pass
+
+    def answer(self, status, body=b"", headers=None, send_body=True):
+        self.send_response(status)
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if send_body:
+            self.wfile.write(body)
+
+    def route(self, send_body):
+        path = self.path.split("?")[0]
+        if path == "/hello":
+            self.answer(200, b"hello", {"Content-Type": "text/plain", "X-Test": "yes"}, send_body)
+        elif path == "/redirect":
+            self.answer(302, b"", {"Location": "/hello"}, send_body)
+        elif path == "/gzip":
+            if "gzip" not in self.headers.get("Accept-Encoding", ""):
+                self.answer(406, b"the client didn't accept gzip", None, send_body)
+            else:
+                self.answer(200, gzip.compress(b"compressed hello"), {"Content-Encoding": "gzip"}, send_body)
+        elif path == "/big":
+            self.answer(200, BIG_BODY, {"Content-Type": "application/octet-stream"}, send_body)
+        elif path == "/empty":
+            self.answer(200, b"", None, send_body)
+        elif path == "/slow":
+            # Longer than WinHTTP's shortest timeout: it times out a short one after about 4 seconds
+            time.sleep(6)
+            self.answer(200, b"late", None, send_body)
+        else:
+            self.answer(404, b"nope", None, send_body)
+
+    def do_GET(self):
+        self.route(True)
+
+    def do_HEAD(self):
+        self.route(False)
+
+    # method|body|X-Custom|Content-Type
+    def echo(self):
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        body = self.rfile.read(length) if length else b""
+        text = "|".join([self.command, body.decode("utf-8", "replace"), self.headers.get("X-Custom", ""),
+                         self.headers.get("Content-Type", "")])
+        self.answer(200, text.encode("utf-8"))
+
+    def do_POST(self):
+        self.echo()
+
+    def do_PUT(self):
+        self.echo()
+
+
+def start_server():
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), TestHandler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server, f"http://127.0.0.1:{server.server_address[1]}"
+
+
+# The server's URL, the folder to save into and /big's digest are the script's arguments, after the config
+def net_runs(bins, project, folder, url):
+    runscript = bins / ("runscript" + EXE)
+    arguments = [url, folder.as_posix(), hashlib.md5(BIG_BODY).hexdigest()]
+    return [Run(f"net/project-cwd/{case}", [runscript, f"cases/{case}.luau", ROOT_CONFIG, *arguments], project, True) for case in NET_CASES]
+
+
+def script_runs(bins, project, elsewhere, decoy, alternates, spellings):
     runscript = bins / ("runscript" + EXE)
     runs = []
 
-    def add(variant, case, cwd, config, absolute):
-        script = (project / "cases" / f"{case}.luau") if absolute else Path("cases") / f"{case}.luau"
+    def add(variant, case, cwd, config, absolute, base=project):
+        script = (base / "cases" / f"{case}.luau") if absolute else Path("cases") / f"{case}.luau"
         args = [runscript, script.as_posix()]
         if config:
-            args.append((project / config).as_posix() if absolute else config)
+            args.append((base / config).as_posix() if absolute else config)
         runs.append(Run(f"script/{variant}/{case}", args, cwd, config is not None))
 
     for case in CONFIG_CASES:
@@ -199,6 +295,8 @@ def script_runs(bins, project, elsewhere, decoy, alternates):
         add("decoy-cwd", case, decoy, ROOT_CONFIG, True)
         for variant, cwd in alternates:
             add(variant, case, cwd, ROOT_CONFIG, False)
+        for variant, base in spellings:
+            add(variant, case, elsewhere, ROOT_CONFIG, True, base)
     for case in NESTED_CONFIG_CASES:
         add("nested-config", case, project, NESTED_CONFIG, False)
         add("nested-config-other-cwd", case, elsewhere, NESTED_CONFIG, True)
@@ -256,7 +354,7 @@ def build_packages(bins, project, elsewhere, packages):
     return built, failures
 
 
-def package_runs(bins, packages, built, elsewhere, decoy, alternates):
+def package_runs(bins, packages, built, elsewhere, decoy, alternates, spellings):
     runpackage = bins / ("runpackage" + EXE)
     runs = []
 
@@ -272,6 +370,8 @@ def package_runs(bins, packages, built, elsewhere, decoy, alternates):
         if not package.kind:
             for variant, cwd in alternates:
                 add(variant, [package.output.name], cwd)
+            for variant, base in spellings:
+                add(variant, [(base / package.output.name).as_posix()], elsewhere)
     return runs
 
 
@@ -308,7 +408,7 @@ def report(runs, compile_failures, verbose, suites):
     return all(counts["runs_failed"] == 0 for counts in stats.values())
 
 
-SUITE_TITLES = {"script": "Scripts (runscript)", "package": "Packages (compile + runpackage)"}
+SUITE_TITLES = {"script": "Scripts (runscript)", "package": "Packages (compile + runpackage)", "net": "Net (net.request)"}
 PLATFORM_NAMES = {"win32": "Windows", "darwin": "macOS", "linux": "Linux"}
 
 
@@ -349,7 +449,7 @@ def write_github_report(runs, failed, compile_failures, stats):
         platform = PLATFORM_NAMES.get(sys.platform, sys.platform)
         for suite, counts in stats.items():
             mark = "✅" if counts["runs_failed"] == 0 else "❌"
-            out.write(f"### {mark} Require tests: {SUITE_TITLES[suite]} on {platform}\n\n")
+            out.write(f"### {mark} Tests: {SUITE_TITLES[suite]} on {platform}\n\n")
             out.write("| | Passed | Failed |\n|---|---|---|\n")
             out.write(f"| Runs | {counts['runs_passed']} | {counts['runs_failed']} |\n")
             out.write(f"| Checks | {counts['checks_passed']} | {counts['checks_failed']} |\n\n")
@@ -383,16 +483,16 @@ def main():
     parser.add_argument("--libraries", help="module DLL folder (default: <bin>/libraries, if it exists)")
     parser.add_argument(
         "--suite",
-        choices=["all", "script", "package"],
+        choices=["all", "script", "package", "net"],
         default="all",
-        help="script: runscript only, package: compile and runpackage only (default: both)",
+        help="script: runscript, package: compile and runpackage, net: net.request (default: all three)",
     )
     parser.add_argument("--filter", help="only runs whose label contains this")
     parser.add_argument("--keep", action="store_true", help="keep the temporary workspace")
     parser.add_argument("--verbose", action="store_true", help="print every run's output")
     args = parser.parse_args()
 
-    suites = ["script", "package"] if args.suite == "all" else [args.suite]
+    suites = ["script", "package", "net"] if args.suite == "all" else [args.suite]
     bins = find_bin(args.bin)
     libraries = Path(args.libraries) if args.libraries else (bins / "libraries")
     if not libraries.is_dir():
@@ -419,23 +519,37 @@ def main():
         write_configs(decoy, libraries)
 
         # The project's folder reached in other ways
-        def alternates_for(folder, name):
-            found = []
+        def other_spellings(folder, name):
+            alternates = []
+            spellings = []
             spelled = case_insensitive_spelling(folder)
             if spelled:
-                found.append(("case-cwd", spelled))
+                alternates.append(("case-cwd", spelled))
+                spellings.append(("case-path", spelled))
             link = try_symlink(workspace / f"{name}-link", folder)
             if link:
-                found.append(("symlink-cwd", link))
-            return found
+                alternates.append(("symlink-cwd", link))
+                spellings.append(("symlink-path", link))
+            short = short_spelling(folder)
+            if short:
+                alternates.append(("short-cwd", short))
+                spellings.append(("short-path", short))
+            return alternates, spellings
 
         runs = []
         compile_failures = []
         if "script" in suites:
-            runs += script_runs(bins, project, elsewhere, decoy, alternates_for(project, "project"))
+            runs += script_runs(bins, project, elsewhere, decoy, *other_spellings(project, "project"))
+        # Before the packages, which move the project's sources away
+        server = None
+        if "net" in suites:
+            downloads = workspace / "downloads"
+            downloads.mkdir()
+            server, url = start_server()
+            runs += net_runs(bins, project, downloads, url)
         if "package" in suites:
             built, compile_failures = build_packages(bins, project, elsewhere, packages)
-            runs += package_runs(bins, packages, built, elsewhere, decoy, alternates_for(packages, "packages"))
+            runs += package_runs(bins, packages, built, elsewhere, decoy, *other_spellings(packages, "packages"))
 
         if args.filter:
             runs = [run for run in runs if args.filter in run.label]
@@ -447,6 +561,8 @@ def main():
                 project.rename(hidden)
             execute(run)
 
+        if server:
+            server.shutdown()
         ok = report(runs, compile_failures, args.verbose, suites)
     finally:
         if args.keep:

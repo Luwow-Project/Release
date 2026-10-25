@@ -1,15 +1,16 @@
 # Tests
 
-Luwow's regression tests, in two suites:
+Luwow's regression tests, in three suites:
 
 - **script**: require resolution through `runscript`, as the [documentation](https://luwow-project.github.io/Documentation/tutorials/require/) describes it;
-- **package**: the same cases compiled with `compile` and run with `runpackage`, plus the package-only ones.
+- **package**: the same cases compiled with `compile` and run with `runpackage`, plus the package-only ones;
+- **net**: `net.request` against an HTTP server the runner starts on `127.0.0.1`, through each platform's client (WinHTTP, NSURLSession, libcurl): methods, bodies and headers, redirects, gzip, error statuses, `saveTo`, timeouts and invalid URLs.
 
 ```bash
 python tests/run_tests.py
 ```
 
-The runner finds `runscript`, `compile` and `runpackage` under `build/bin` (or pass `--bin <folder>`), and the module DLLs in its `libraries` folder (or `--libraries <folder>`). Without a `libraries` folder, the libraries are expected to be bound into the executables (a STATIC build). It exits with 1 when any run fails. `--suite script` runs only the `runscript` suite and `--suite package` only the compile and `runpackage` one; both run by default. `--filter <text>` picks runs by label, `--verbose` prints every run's output and `--keep` keeps the temporary workspace.
+The runner finds `runscript`, `compile` and `runpackage` under `build/bin` (or pass `--bin <folder>`), and the module DLLs in its `libraries` folder (or `--libraries <folder>`). Without a `libraries` folder, the libraries are expected to be bound into the executables (a STATIC build). It exits with 1 when any run fails. `--suite script`, `--suite package` and `--suite net` run one suite; all three run by default. The net suite needs the `net` library. `--filter <text>` picks runs by label, `--verbose` prints every run's output and `--keep` keeps the temporary workspace.
 
 ## What runs
 
@@ -30,6 +31,7 @@ The decoy mirrors the project's layout, configs included, with other modules: a 
 | `caching` | every path to a module gets the same value, and the module runs once |
 | `errors` | bare names, undefined aliases, missing modules and modules that raise are errors, and require works after them |
 | `package_names` | packages only: modules, the main script included, are named from the project's folder and found by those names through aliases, relative paths and `@self` |
+| `net` | net suite only: `net.request` through the platform's HTTP client, against the runner's local server |
 | `noconfig` | relative, `@self` and folder modules without a config, and config aliases are undefined |
 
 Every run also checks the config ran exactly once (each config prints `CONFIG_RAN`), or never without one, and that nothing of the decoy was loaded.
