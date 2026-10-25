@@ -24,7 +24,7 @@ t.check("HEAD answers without a body", function()
 	t.equal(response.headers["x-test"], "yes", "header x-test")
 end)
 
-t.check("POST sends its body and headers as given", function()
+t.check("POST sends its body and headers, a body without a Content-Type as a form", function()
 	local response = net.request({
 		url = `{server}/echo`,
 		method = "POST",
@@ -32,10 +32,10 @@ t.check("POST sends its body and headers as given", function()
 		body = "posted body",
 	})
 	t.equal(response.status, 200, "status")
-	t.equal(response.body, "POST|posted body|custom value|", "echo (method|body|X-Custom|Content-Type)")
+	t.equal(response.body, "POST|posted body|custom value|application/x-www-form-urlencoded", "echo (method|body|X-Custom|Content-Type)")
 end)
 
-t.check("a body's Content-Type is the one given, and none is added otherwise", function()
+t.check("a body's Content-Type is the one given", function()
 	local response = net.request({
 		url = `{server}/echo`,
 		method = "PUT",
