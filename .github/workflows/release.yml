@@ -55,6 +55,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Installing curl for Linux.
+      - name: Install libcurl
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev pkg-config
+          pkg-config --exists --print-errors libcurl
+          echo "libcurl $(pkg-config --modversion libcurl)"
+
       - name: Configure
         run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 

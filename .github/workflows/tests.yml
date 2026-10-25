@@ -29,17 +29,27 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Installing curl for Linux.
+      - name: Install libcurl
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev pkg-config
+          pkg-config --exists --print-errors libcurl
+          echo "libcurl $(pkg-config --modversion libcurl)"
+
       - name: Configure
         shell: bash
         run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D LUWOW_LIBRARY_MODE=SHARED
 
-      # Building the executables, also the Filesystem library for testing.
+      # Building the executables, also the Filesystem and Net libraries for testing.
       - name: Build
         id: build
         shell: bash
         run: >
-          cmake --build build --config Release --parallel
-          --target Luwow.RunScript Luwow.Compile Luwow.RunPackage Luwow.FsLibrary
+          cmake --build build --config Release --parallel 4
+          --target Luwow.RunScript Luwow.Compile Luwow.RunPackage Luwow.FsLibrary Luwow.NetLibrary
 
       # The runscript tests
       - name: Script tests (runscript)
@@ -54,6 +64,13 @@ jobs:
         shell: bash
         run: python tests/run_tests.py --suite package
 
+      # The net tests
+      - name: Net tests (net.request)
+        id: net
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: python tests/run_tests.py --suite net
+
       # Total: Passed and failed
       - name: Totals
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -61,3 +78,4 @@ jobs:
         run: |
           echo "Script runs:  ${{ steps.script.outputs.runs_passed }} passed, ${{ steps.script.outputs.runs_failed }} failed"
           echo "Package runs: ${{ steps.package.outputs.runs_passed }} passed, ${{ steps.package.outputs.runs_failed }} failed"
+          echo "Net runs:     ${{ steps.net.outputs.runs_passed }} passed, ${{ steps.net.outputs.runs_failed }} failed"
