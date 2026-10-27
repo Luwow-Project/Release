@@ -29,8 +29,6 @@ option(LUWOW_BUILD_LIBRARIES "Build the Luwow libraries" ON)
 set(LUWOW_LIBRARY_MODE "SHARED" CACHE STRING "STATIC binds the libraries into runscript, SHARED builds them as DLLs runscript loads through .config.luau")
 set_property(CACHE LUWOW_LIBRARY_MODE PROPERTY STRINGS STATIC SHARED)
 
-include(${CMAKE_SOURCE_DIR}/cmake/LuwowModules.cmake)
-
 # Luau
 set(LUAU_ROOT ${CMAKE_SOURCE_DIR}/extern/luau)
 
@@ -40,6 +38,9 @@ set(COMPILE_ROOT ${CORE_ROOT}/src/Compile)
 set(ENGINE_ROOT ${CORE_ROOT}/src/Engine)
 set(RUN_SCRIPT_ROOT ${CORE_ROOT}/src/RunScript)
 set(RUN_PACKAGE_ROOT ${CORE_ROOT}/src/RunPackage)
+set(CORE_CMAKE_ROOT ${CORE_ROOT}/cmake)
+
+include(${CORE_CMAKE_ROOT}/LuwowModules.cmake)
 
 # Libraries
 set(LIBRARY_ROOT ${CMAKE_SOURCE_DIR}/libraries)
