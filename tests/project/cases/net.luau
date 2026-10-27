@@ -6,7 +6,7 @@ local t = require("./harness")
 local fs = require("@Luwow/fs")
 local net = require("@Luwow/net")
 
-local server: string, folder: string, bigDigest: string = GlobalArgs[2], GlobalArgs[3], GlobalArgs[4]
+local server: string, folder: string, bigDigest: string = GlobalArgs[3], GlobalArgs[4], GlobalArgs[5]
 
 t.check("GET answers with the status, headers and body", function()
 	local response = net.request({ url = `{server}/hello` })
