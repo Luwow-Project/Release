@@ -21,19 +21,18 @@ if(WIN32)
 endif()
 
 # Build options
-#   Executables with bound libraries:  LUWOW_BUILD_EXECUTABLES=ON  LUWOW_BUILD_LIBRARIES=ON   LUWOW_LIBRARY_MODE=STATIC
-#   Executables loading DLLs:          LUWOW_BUILD_EXECUTABLES=ON  LUWOW_BUILD_LIBRARIES=OFF  LUWOW_LIBRARY_MODE=SHARED
-#   Library DLLs only:                 LUWOW_BUILD_EXECUTABLES=OFF LUWOW_BUILD_LIBRARIES=ON   LUWOW_LIBRARY_MODE=SHARED
-option(LUWOW_BUILD_EXECUTABLES "Build runscript and the other Luwow executables" ON)
-option(LUWOW_BUILD_LIBRARIES "Build the Luwow libraries" ON)
-set(LUWOW_LIBRARY_MODE "SHARED" CACHE STRING "STATIC binds the libraries into runscript, SHARED builds them as DLLs runscript loads through .config.luau")
+#   Executables loading library DLLs, and the SDK they're built with:  LUWOW_LIBRARY_MODE=SHARED (the default)
+#   Executables with libraries bound in:  LUWOW_LIBRARY_MODE=STATIC LUWOW_LIBRARY_DIRS=<folders adding them>
+set(LUWOW_LIBRARY_MODE "SHARED" CACHE STRING "STATIC binds the libraries of LUWOW_LIBRARY_DIRS into the executables, SHARED makes them load DLLs through .config.luau")
 set_property(CACHE LUWOW_LIBRARY_MODE PROPERTY STRINGS STATIC SHARED)
+set(LUWOW_LIBRARY_DIRS "" CACHE STRING "Folders whose CMakeLists add libraries with luwow_add_library, bound into the executables in a STATIC build")
+set(LUWOW_RELEASE_VERSION "dev" CACHE STRING "The release's version, such as v0.2.0, recorded in the SDK")
 
 # Luau
-set(LUAU_ROOT ${CMAKE_SOURCE_DIR}/extern/luau)
+set(LUAU_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/extern/luau)
 
 # Core engine + executables
-set(CORE_ROOT ${CMAKE_SOURCE_DIR}/extern/core)
+set(CORE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/extern/core)
 set(COMPILE_ROOT ${CORE_ROOT}/src/Compile)
 set(ENGINE_ROOT ${CORE_ROOT}/src/Engine)
 set(RUN_SCRIPT_ROOT ${CORE_ROOT}/src/RunScript)
@@ -41,18 +40,6 @@ set(RUN_PACKAGE_ROOT ${CORE_ROOT}/src/RunPackage)
 set(CORE_CMAKE_ROOT ${CORE_ROOT}/cmake)
 
 include(${CORE_CMAKE_ROOT}/LuwowModules.cmake)
-
-# Libraries
-set(LIBRARY_ROOT ${CMAKE_SOURCE_DIR}/libraries)
-set(GUI_ROOT ${LIBRARY_ROOT}/gui)
-set(TASK_ROOT ${LIBRARY_ROOT}/task)
-set(FS_ROOT ${LIBRARY_ROOT}/fs)
-set(IO_ROOT ${LIBRARY_ROOT}/io)
-set(NET_ROOT ${LIBRARY_ROOT}/net)
-set(SIGNAL_ROOT ${LIBRARY_ROOT}/signal)
-
-# Libuv
-set(LIBUV_ROOT ${CMAKE_SOURCE_DIR}/extern/libuv)
 
 # Luau build
 option(LUAU_BUILD_CLI "Build CLI" OFF)
@@ -64,37 +51,19 @@ luwow_export_luau_api()
 # Core engine
 add_subdirectory(${ENGINE_ROOT})
 
-# Libraries
-if(LUWOW_BUILD_LIBRARIES)
-    if(WIN32 OR APPLE)
-        add_subdirectory(${GUI_ROOT}/src)
-    endif()
-
-    add_subdirectory(${TASK_ROOT}/src)
-    add_subdirectory(${FS_ROOT}/src)
-    add_subdirectory(${IO_ROOT}/src)
-    add_subdirectory(${SIGNAL_ROOT}/src)
-    add_subdirectory(${NET_ROOT}/src)
-
-    # Only the static uv_a is linked, skip building uv.dll
-    set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-    add_subdirectory(${LIBUV_ROOT})
-endif()
-
+# Libraries bound into the executables, registered before the executables are made
+foreach(libraryDir IN LISTS LUWOW_LIBRARY_DIRS)
+    get_filename_component(libraryName ${libraryDir} NAME)
+    add_subdirectory(${libraryDir} ${CMAKE_BINARY_DIR}/libraries/${libraryName})
+endforeach()
 luwow_generate_static_modules()
 
 # Executables
-if(LUWOW_BUILD_EXECUTABLES)
-    add_subdirectory(${RUN_SCRIPT_ROOT})
-    add_subdirectory(${COMPILE_ROOT})
-    add_subdirectory(${RUN_PACKAGE_ROOT})
+add_subdirectory(${RUN_SCRIPT_ROOT})
+add_subdirectory(${COMPILE_ROOT})
+add_subdirectory(${RUN_PACKAGE_ROOT})
 
-    # In SHARED mode runscript.lib is the import library third-party module DLLs link against on Windows
-    install(TARGETS Luwow.RunScript Luwow.Compile Luwow.RunPackage
-        RUNTIME DESTINATION bin COMPONENT executables
-        ARCHIVE DESTINATION lib COMPONENT sdk
-    )
-elseif(LUWOW_LIBRARY_MODE STREQUAL "SHARED")
-    # Library DLLs link against the Luau API runscript exports, so it's built but not installed
-    add_subdirectory(${RUN_SCRIPT_ROOT} ${CMAKE_BINARY_DIR}/runscript EXCLUDE_FROM_ALL)
-endif()
+install(TARGETS Luwow.RunScript Luwow.Compile Luwow.RunPackage RUNTIME DESTINATION bin COMPONENT executables)
+
+# The SDK library DLLs are built with, from runscript's exports
+luwow_install_sdk(Luwow.RunScript)

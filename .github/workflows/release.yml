@@ -55,40 +55,42 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Installing curl for Linux.
-      - name: Install libcurl
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev pkg-config
-          pkg-config --exists --print-errors libcurl
-          echo "libcurl $(pkg-config --modversion libcurl)"
-
       - name: Configure
-        run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D "LUWOW_RELEASE_VERSION=$VERSION"
 
       - name: Build
         run: cmake --build build --config Release --parallel 4
 
-      # Nothing is uploaded that fails the tests
-      - name: Test
-        run: python tests/run_tests.py
-
       - name: Install
         run: |
           cmake --install build --config Release --prefix dist --component executables
-          cmake --install build --config Release --prefix dist --component libraries
+          cmake --install build --config Release --prefix sdk --component sdk
 
-      - name: Pack
-        working-directory: dist/bin
+      # Nothing is uploaded that fails the tests, which also build a library from the SDK being released
+      - name: Test
         run: |
-          name="luwow-${VERSION}-${{ matrix.os.name }}"
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            7z a -tzip "../${name}.zip" . > /dev/null
-          else
-            tar -czf "../${name}.tar.gz" .
-          fi
+          sdk="$(cd sdk && (pwd -W 2>/dev/null || pwd))"
+          cmake -S tests/sdk -B build-sdk -D CMAKE_BUILD_TYPE=Release -D "LuwowSDK_DIR=$sdk/cmake"
+          cmake --build build-sdk --config Release
+          library="$(find build-sdk/libraries -name 'sdktest.*' | head -n 1)"
+          python tests/run_tests.py --bin dist/bin --libraries "$(dirname "$library")"
+
+      # luwow-<version>-<os>.zip has the executables at its root, luwow-sdk-<version>-<os>.zip the SDK's
+      # cmake, include and lib folders
+      - name: Pack
+        run: |
+          mkdir packages
+          out="$PWD/packages"
+          pack() {
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              (cd "$1" && 7z a -tzip "$out/$2.zip" . > /dev/null)
+            else
+              (cd "$1" && zip -qry "$out/$2.zip" .)
+            fi
+          }
+          pack dist/bin "luwow-${VERSION}-${{ matrix.os.name }}"
+          pack sdk "luwow-sdk-${VERSION}-${{ matrix.os.name }}"
+          ls -l packages
 
       - name: Upload
-        run: gh release upload "$VERSION" dist/luwow-* --repo "$GITHUB_REPOSITORY" --clobber
+        run: gh release upload "$VERSION" packages/*.zip --repo "$GITHUB_REPOSITORY" --clobber

@@ -2,3 +2,7 @@ build/
 .vscode/
 .DS_Store
 scripts/
+/build-sdk/
+/sdk/
+/dist/
+/packages/

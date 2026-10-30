@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Luwow's test suites: require resolution through runscript (--suite script), packages through compile and
-runpackage (--suite package), and net.request against a local HTTP server (--suite net).
+Luwow's test suites: require resolution through runscript (--suite script), and packages through compile and
+runpackage (--suite package).
 
 Runs every case in project/cases with runscript, and compiled into a package with compile and runpackage,
 from several working directories: the project's own, an unrelated one, a decoy that mirrors the project with
@@ -11,13 +11,13 @@ Each case prints PASS/FAIL per check and DONE <failures> at its end. A run
 passes when it exits with 0, prints DONE 0 and no FAIL, runs its config exactly once (or never, without
 one) and never touches the decoy.
 
-    python tests/run_tests.py [--bin <folder with runscript>] [--libraries <module DLL folder>]
+    python tests/run_tests.py [--bin <folder with runscript>] [--libraries <folder with the sdktest DLL>]
+
+The native case loads sdktest, the library tests/sdk builds against the SDK. Without it the native case is
+skipped.
 """
 
 import argparse
-import gzip
-import hashlib
-import http.server
 import json
 import os
 import re
@@ -25,8 +25,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -42,8 +40,8 @@ NESTED_CONFIG_CASES = ["self", "aliases", "native", "caching"]
 NO_CONFIG_CASES = ["noconfig"]
 # Cases run as packages only, with the project's config
 PACKAGE_CASES = ["package_names"]
-# Cases run against the local HTTP server, with runscript
-NET_CASES = ["net"]
+# Cases that need the sdktest library
+LIBRARY_CASES = ["native"]
 # Cases compiled again from paths given in other ways
 COMPILE_STYLE_CASES = ["aliases", "init_semantics", "package_names"]
 
@@ -62,8 +60,7 @@ NESTED_CONFIG = "configs/nested.config.luau"
 # What the decoy's modules and config print or are named, which no run may show
 DECOY_MARKER = "decoy:"
 
-# The dlls a STATIC build's configs get, and what the engine prints when it reads or loads them anyway
-STATIC_DLLS = "./no-such-libraries"
+# What the engine prints when it can't read or load the configs' dlls
 DLL_MESSAGES = ["could not list module directory", "Could not load module", "DLL modules are not supported"]
 
 TIMEOUT = 60
@@ -113,7 +110,7 @@ def find_bin(given):
 
 def write_configs(project, libraries):
     # Absolute, so the DLLs are found from any working directory and next to any package.
-    dlls = json.dumps(libraries.resolve().as_posix() if libraries else STATIC_DLLS)
+    dlls = json.dumps(libraries.resolve().as_posix())
     for template in project.rglob("*.config.luau.in"):
         text = template.read_text(encoding="utf-8").replace("@DLLS@", dlls)
         template.with_suffix("").write_text(text, encoding="utf-8", newline="\n")
@@ -199,83 +196,6 @@ def execute(run):
     expected_config_runs = 1 if run.configured else 0
     if config_runs != expected_config_runs:
         run.problems.append(f"config ran {config_runs} times, expected {expected_config_runs}")
-
-
-# The net case's server: what each path answers, a deterministic megabyte for saveTo, and a path slow
-# enough to time out
-BIG_BODY = bytes(i % 251 for i in range(1024 * 1024))
-
-
-class TestHandler(http.server.BaseHTTPRequestHandler):
-    protocol_version = "HTTP/1.1"
-
-    def log_message(self, *args):
-        pass
-
-    def answer(self, status, body=b"", headers=None, send_body=True):
-        self.send_response(status)
-        for name, value in (headers or {}).items():
-            self.send_header(name, value)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        if send_body:
-            self.wfile.write(body)
-
-    def route(self, send_body):
-        path = self.path.split("?")[0]
-        if path == "/hello":
-            self.answer(200, b"hello", {"Content-Type": "text/plain", "X-Test": "yes"}, send_body)
-        elif path == "/redirect":
-            self.answer(302, b"", {"Location": "/hello"}, send_body)
-        elif path == "/gzip":
-            if "gzip" not in self.headers.get("Accept-Encoding", ""):
-                self.answer(406, b"the client didn't accept gzip", None, send_body)
-            else:
-                self.answer(200, gzip.compress(b"compressed hello"), {"Content-Encoding": "gzip"}, send_body)
-        elif path == "/big":
-            self.answer(200, BIG_BODY, {"Content-Type": "application/octet-stream"}, send_body)
-        elif path == "/empty":
-            self.answer(200, b"", None, send_body)
-        elif path == "/slow":
-            # Longer than WinHTTP's shortest timeout: it times out a short one after about 4 seconds
-            time.sleep(6)
-            self.answer(200, b"late", None, send_body)
-        else:
-            self.answer(404, b"nope", None, send_body)
-
-    def do_GET(self):
-        self.route(True)
-
-    def do_HEAD(self):
-        self.route(False)
-
-    # method|body|X-Custom|Content-Type
-    def echo(self):
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        body = self.rfile.read(length) if length else b""
-        text = "|".join([self.command, body.decode("utf-8", "replace"), self.headers.get("X-Custom", ""),
-                         self.headers.get("Content-Type", "")])
-        self.answer(200, text.encode("utf-8"))
-
-    def do_POST(self):
-        self.echo()
-
-    def do_PUT(self):
-        self.echo()
-
-
-def start_server():
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), TestHandler)
-    server.daemon_threads = True
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    return server, f"http://127.0.0.1:{server.server_address[1]}"
-
-
-# The server's URL, the folder to save into and /big's digest are the script's arguments, after the config
-def net_runs(bins, project, folder, url):
-    runscript = bins / ("runscript" + EXE)
-    arguments = [url, folder.as_posix(), hashlib.md5(BIG_BODY).hexdigest()]
-    return [Run(f"net/project-cwd/{case}", [runscript, f"cases/{case}.luau", ROOT_CONFIG, *arguments], project, True) for case in NET_CASES]
 
 
 def script_runs(bins, project, elsewhere, decoy, alternates, spellings):
@@ -408,7 +328,7 @@ def report(runs, compile_failures, verbose, suites):
     return all(counts["runs_failed"] == 0 for counts in stats.values())
 
 
-SUITE_TITLES = {"script": "Scripts (runscript)", "package": "Packages (compile + runpackage)", "net": "Net (net.request)"}
+SUITE_TITLES = {"script": "Scripts (runscript)", "package": "Packages (compile + runpackage)"}
 PLATFORM_NAMES = {"win32": "Windows", "darwin": "macOS", "linux": "Linux"}
 
 
@@ -480,26 +400,29 @@ def write_github_report(runs, failed, compile_failures, stats):
 def main():
     parser = argparse.ArgumentParser(description="Luwow's test suites")
     parser.add_argument("--bin", help="folder with runscript, compile and runpackage (default: found under build/bin)")
-    parser.add_argument("--libraries", help="module DLL folder (default: <bin>/libraries, if it exists)")
+    parser.add_argument("--libraries", help="folder with the sdktest DLL (default: <bin>/libraries, if it exists)")
     parser.add_argument(
         "--suite",
-        choices=["all", "script", "package", "net"],
+        choices=["all", "script", "package"],
         default="all",
-        help="script: runscript, package: compile and runpackage, net: net.request (default: all three)",
+        help="script: runscript, package: compile and runpackage (default: both)",
     )
     parser.add_argument("--filter", help="only runs whose label contains this")
     parser.add_argument("--keep", action="store_true", help="keep the temporary workspace")
     parser.add_argument("--verbose", action="store_true", help="print every run's output")
     args = parser.parse_args()
 
-    suites = ["script", "package", "net"] if args.suite == "all" else [args.suite]
+    suites = ["script", "package"] if args.suite == "all" else [args.suite]
     bins = find_bin(args.bin)
     libraries = Path(args.libraries) if args.libraries else (bins / "libraries")
     if not libraries.is_dir():
-        libraries = None  # A STATIC build has its libraries bound in
+        libraries = None
+        # Without the library there's nothing native to find
+        for cases in (CONFIG_CASES, NESTED_CONFIG_CASES):
+            cases[:] = [case for case in cases if case not in LIBRARY_CASES]
 
     print(f"Binaries:  {bins}")
-    print(f"Libraries: {libraries or 'none (bound into the executables)'}")
+    print(f"Libraries: {libraries or 'none, skipping ' + ', '.join(LIBRARY_CASES)}")
 
     workspace = Path(tempfile.mkdtemp(prefix="luwow-require-"))
     print(f"Workspace: {workspace}")
@@ -513,6 +436,10 @@ def main():
         shutil.copytree(FIXTURE, project)
         shutil.copytree(FIXTURE, decoy)
         packages.mkdir()
+        if libraries is None:
+            # An empty folder, so the configs' dlls are there to read without the library
+            libraries = workspace / "no-libraries"
+            libraries.mkdir()
         elsewhere.mkdir()
         write_configs(project, libraries)
         make_decoy(decoy)
@@ -540,13 +467,6 @@ def main():
         compile_failures = []
         if "script" in suites:
             runs += script_runs(bins, project, elsewhere, decoy, *other_spellings(project, "project"))
-        # Before the packages, which move the project's sources away
-        server = None
-        if "net" in suites:
-            downloads = workspace / "downloads"
-            downloads.mkdir()
-            server, url = start_server()
-            runs += net_runs(bins, project, downloads, url)
         if "package" in suites:
             built, compile_failures = build_packages(bins, project, elsewhere, packages)
             runs += package_runs(bins, packages, built, elsewhere, decoy, *other_spellings(packages, "packages"))
@@ -561,8 +481,6 @@ def main():
                 project.rename(hidden)
             execute(run)
 
-        if server:
-            server.shutdown()
         ok = report(runs, compile_failures, args.verbose, suites)
     finally:
         if args.keep:

@@ -1,6 +1,6 @@
 # Releases build repository for Luwow-Project
 
-This repository builds all the major components of Luwow Project
+This repository builds Luwow's executables: `runscript`, `runpackage` and `compile`.
 
 ## Requirements
 
@@ -58,6 +58,14 @@ cmake --build build
 
 If you wish to change the config, config/build types are:
 `Debug`, `Release`, `RelWithDebugInfo`, `MinSizeRel`
+
+### 3. Run the Tests
+
+```bash
+python tests/run_tests.py
+```
+
+See [tests/README.md](tests/README.md) for the library they load to check the SDK.
 
 -----
 

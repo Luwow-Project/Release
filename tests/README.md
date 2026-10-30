@@ -1,16 +1,28 @@
 # Tests
 
-Luwow's regression tests, in three suites:
+Luwow's regression tests, in two suites:
 
 - **script**: require resolution through `runscript`, as the [documentation](https://luwow-project.github.io/Documentation/tutorials/require/) describes it;
-- **package**: the same cases compiled with `compile` and run with `runpackage`, plus the package-only ones;
-- **net**: `net.request` against an HTTP server the runner starts on `127.0.0.1`, through each platform's client (WinHTTP, NSURLSession, libcurl): methods, bodies and headers, redirects, gzip, error statuses, `saveTo`, timeouts and invalid URLs.
+- **package**: the same cases compiled with `compile` and run with `runpackage`, plus the package-only ones.
 
 ```bash
 python tests/run_tests.py
 ```
 
-The runner finds `runscript`, `compile` and `runpackage` under `build/bin` (or pass `--bin <folder>`), and the module DLLs in its `libraries` folder (or `--libraries <folder>`). Without a `libraries` folder, the libraries are expected to be bound into the executables (a STATIC build). It exits with 1 when any run fails. `--suite script`, `--suite package` and `--suite net` run one suite; all three run by default. The net suite needs the `net` library. `--filter <text>` picks runs by label, `--verbose` prints every run's output and `--keep` keeps the temporary workspace.
+The runner finds `runscript`, `compile` and `runpackage` under `build/bin` (or pass `--bin <folder>`), and the test library in its `libraries` folder (or `--libraries <folder>`). It exits with 1 when any run fails. `--suite script` and `--suite package` run one suite; both run by default. `--filter <text>` picks runs by label, `--verbose` prints every run's output and `--keep` keeps the temporary workspace.
+
+## The SDK test library
+
+The `native` case loads `sdktest`, a library in `sdk/` built the way the library repository builds them, against an installed SDK, not this repository's sources. Its checks call into the executable's Luau, use a `Userdata.h` object and reach the host through `ILuauHost`, so they fail when the SDK and the executables disagree. Without the library the `native` case is skipped.
+
+```bash
+cmake --install build --config Release --prefix sdk --component sdk
+cmake -S tests/sdk -B build-sdk -D CMAKE_BUILD_TYPE=Release -D LuwowSDK_DIR=<absolute path>/sdk/cmake
+cmake --build build-sdk --config Release
+python tests/run_tests.py --libraries build-sdk/libraries/Release   # build-sdk/libraries with single-config generators
+```
+
+A STATIC build binds it in instead, with `-D LUWOW_LIBRARY_MODE=STATIC -D LUWOW_LIBRARY_DIRS=<folder>` and a `CMakeLists.txt` there calling `luwow_add_library` on `tests/sdk/SdkTest.cpp`. Pass `--libraries` an empty folder then, so the `native` case runs.
 
 ## What runs
 
@@ -27,11 +39,10 @@ The decoy mirrors the project's layout, configs included, with other modules: a 
 | `self` | `@self` in the main script, in regular modules, in modules found through an alias |
 | `init_semantics` | folder modules: `init.luau` and `init.lua`, `@self` is the folder, `./` its parent, `../` up from there, requires inside an init's functions, nested folder modules, a folder without an init |
 | `aliases` | config aliases to folders and folder modules, subfolders, relative requires inside aliased modules, aliases from nested modules, aliases worked out by the config's code |
-| `native` | `@Luwow/fs` is the native module even though the config aliases `Luwow` to type stubs, and the config's alias still finds `@Luwow/stubonly` |
+| `native` | `@Luwow/sdktest` is the native module even though the config aliases `Luwow` to type stubs, the config's alias still finds `@Luwow/stubonly` |
 | `caching` | every path to a module gets the same value, and the module runs once |
 | `errors` | bare names, undefined aliases, missing modules and modules that raise are errors, and require works after them |
 | `package_names` | packages only: modules, the main script included, are named from the project's folder and found by those names through aliases, relative paths and `@self` |
-| `net` | net suite only: `net.request` through the platform's HTTP client, against the runner's local server |
 | `noconfig` | relative, `@self` and folder modules without a config, and config aliases are undefined |
 
 Every run also checks the config ran exactly once (each config prints `CONFIG_RAN`), or never without one, and that nothing of the decoy was loaded.
