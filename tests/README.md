@@ -31,6 +31,8 @@ Each case in `project/cases` is run:
 - with `runscript`, from the project's folder, from an unrelated folder, from a decoy folder, from the project's folder spelled in another case (where the file system ignores case) and through a symlink to it (where symlinks can be made);
 - compiled into a package, with `runpackage`, from the package's folder, from an unrelated folder, from the decoy, and the same other spellings.
 
+The `bundle` case is instead compiled with `compile -e` into an executable, `runpackage` with the package after it, along with the files in `project/assets` as assets. The executable is run by itself with two arguments, from the same three folders, and on Windows also when built windowed with `-w`.
+
 The decoy mirrors the project's layout, configs included, with other modules: a run that resolves anything from its working directory loads one of them, and fails. The alias cases run again with `configs/nested.config.luau`, a config in a subfolder, and `noconfig` runs without a config. Some cases are also compiled from paths given with `./`, as absolute paths and from the `cases` subfolder, which must make no difference to the package.
 
 | Case | Covers |
@@ -44,6 +46,7 @@ The decoy mirrors the project's layout, configs included, with other modules: a 
 | `errors` | bare names, undefined aliases, missing modules and modules that raise are errors, and require works after them |
 | `package_names` | packages only: modules, the main script included, are named from the project's folder and found by those names through aliases, relative paths and `@self` |
 | `noconfig` | relative, `@self` and folder modules without a config, and config aliases are undefined |
+| `bundle` | bundled executables only, the executable gets its own arguments, files of any kind are packed as assets and a script in the asset folder isn't (the asset checks need `sdktest`) |
 
 Every run also checks the config ran exactly once (each config prints `CONFIG_RAN`), or never without one, and that nothing of the decoy was loaded.
 

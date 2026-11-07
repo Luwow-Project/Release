@@ -5,7 +5,8 @@ runpackage (--suite package).
 
 Runs every case in project/cases with runscript, and compiled into a package with compile and runpackage,
 from several working directories: the project's own, an unrelated one, a decoy that mirrors the project with
-other modules, one spelled in another case and one reached through a symlink.
+other modules, one spelled in another case and one reached through a symlink. The bundle case is compiled into
+an executable with compile -e instead, and run by itself.
 
 Each case prints PASS/FAIL per check and DONE <failures> at its end. A run
 passes when it exits with 0, prints DONE 0 and no FAIL, runs its config exactly once (or never, without
@@ -44,6 +45,10 @@ PACKAGE_CASES = ["package_names"]
 LIBRARY_CASES = ["native"]
 # Cases compiled again from paths given in other ways
 COMPILE_STYLE_CASES = ["aliases", "init_semantics", "package_names"]
+# Cases compiled into a bundled executable with -e, with the asset folder, and run with these arguments
+BUNDLE_CASES = ["bundle"]
+BUNDLE_ASSETS = "assets"
+BUNDLE_ARGS = ["first", "second arg"]
 
 # How compile is given a package's paths, besides relative to the project's folder:
 #   dotted     ./cases/main.luau ./src ...  from the project's folder
@@ -271,6 +276,20 @@ def build_packages(bins, project, elsewhere, packages):
             failures.append((name, f"cwd: {cwd}\ncommand: {' '.join(command)}\n{output_text}"))
             continue
         built.append(Package(case, output, config is not None, kind))
+
+    bundles = [("bundled/", case, []) for case in BUNDLE_CASES]
+    if os.name == "nt":
+        bundles += [("bundled-windowed/", case, ["-w"]) for case in BUNDLE_CASES]
+    for kind, case, extra in bundles:
+        output = packages / f"{case}.{kind.rstrip('/')}{EXE}"
+        args, cwd = compile_command(project, elsewhere, case, ROOT_CONFIG, "")
+        command = [str(compile_exe), *args, "-a", BUNDLE_ASSETS, "-e", output.as_posix(), *extra]
+        result = subprocess.run(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=TIMEOUT)
+        if result.returncode != 0 or not output.is_file():
+            output_text = result.stdout.decode("utf-8", errors="replace")
+            failures.append((output.name, f"cwd: {cwd}\ncommand: {' '.join(command)}\n{output_text}"))
+            continue
+        built.append(Package(case, output, True, kind))
     return built, failures
 
 
@@ -280,6 +299,11 @@ def package_runs(bins, packages, built, elsewhere, decoy, alternates, spellings)
 
     for package in built:
         prefix = f"package/{package.kind}"
+
+        if package.kind.startswith("bundled"):
+            for variant, cwd in [("package-cwd", packages), ("other-cwd", elsewhere), ("decoy-cwd", decoy)]:
+                runs.append(Run(f"{prefix}{variant}/{package.case}", [package.output, *BUNDLE_ARGS], cwd, package.configured))
+            continue
 
         def add(variant, args, cwd):
             runs.append(Run(f"{prefix}{variant}/{package.case}", [runpackage, *args], cwd, package.configured))
